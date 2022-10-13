@@ -1,6 +1,7 @@
 version: "3.9"
 services:
   zookeeper-1:
+    restart: always
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -9,6 +10,7 @@ services:
       - 22181:2181
 
   zookeeper-2:
+    restart: always
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -17,6 +19,7 @@ services:
       - 32181:2181
 
   kafka-1:
+    restart: always
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper-1
@@ -32,6 +35,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   kafka-2:
+    restart: always
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper-1
@@ -56,9 +60,10 @@ services:
     ports:
       - "8000:5000"
     environment:
-      FLASK_APP: app.py
+      FLASK_APP: webapp.py
       KAFKA_HOSTS: kafka-1:9092,kafka-2:9092
       KAFKA_TOPIC: test
+      TZ: Europe/Berlin
 
   map-web:
     depends_on:
@@ -68,9 +73,9 @@ services:
       context: ./map-web
       dockerfile: Dockerfile
     ports:
-      - "8001:5001"
+      - "8001:5000"
     environment:
-      FLASK_APP: app.py
+      FLASK_APP: webapp.py
       KAFKA_HOSTS: kafka-1:9092,kafka-2:9092
       KAFKA_TOPIC: test
 
