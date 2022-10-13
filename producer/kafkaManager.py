@@ -25,8 +25,8 @@ def singleton(class_):
 class KafkaManager:
     def __init__(self, hosts, topic, file):
         self.manager = init_manager()
-        self.last_index = self.manager.Value('i', 0)
-        self.silenced = self.manager.Value(c_bool, False)
+        self.last_index = Value('i', 0)
+        self.silenced = Value(c_bool, False)
         self.offset = None
         self.state = self.manager.Event()
         self.state.set()
@@ -112,12 +112,13 @@ def msg_callback(err, msg):
 
 def init_manager():
     manager = Manager()
-    manager.start()
+    #manager.start()
     return manager
 
 
 def load_data(file):
     df = pd.read_csv(file, delimiter=',', parse_dates=True, header=0, low_memory=False)
     df = df.reset_index()
+    df.drop(columns=['key'], inplace=True)
     df['date'] = pd.to_datetime(df['date'])
     return df
