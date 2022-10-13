@@ -1,5 +1,6 @@
 import logging
 import json
+from datetime import datetime
 
 from confluent_kafka import Consumer, KafkaException, KafkaError
 
@@ -8,19 +9,36 @@ class KafkaListener:
 
     def __init__(self, hosts, group, topic):
         self.conf = {'bootstrap.servers': hosts, 'group.id': group,
-                     'auto.offset.reset': 'smallest'}
+                     'auto.offset.reset': 'latest'}
         self.topic = topic
         self.group = group
+        self.consumer = None
+
+    def __del__(self):
+        self.close_consumer()
+
+    def close_consumer(self):
+        logging.info(f'Stop streaming with group {self.group}')
+        try:
+            if not self.consumer is None:
+                self.consumer.close()
+        except:
+            logging.error("Error on closing")
 
     def consume(self):
         try:
-            consumer = Consumer(self.conf)
-            consumer.subscribe(self.topic)
+            self.consumer = Consumer(self.conf)
+            self.consumer.subscribe(self.topic)
             logging.info(f'Start to consume messages with group {self.group}')
+            last_msg = datetime.now()
             while True:
-                msg = consumer.poll(timeout=1.0)
+                msg = self.consumer.poll(timeout=1.0)
                 logging.debug('Polling...')
                 if msg is None:
+                    cur_time = datetime.now()
+                    if (cur_time - last_msg).total_seconds() > 5:
+                        last_msg = datetime.now()
+                        yield "EMPTY_MSG"
                     continue
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
@@ -31,7 +49,7 @@ class KafkaListener:
                         raise KafkaException(msg.error())
                 else:
                     logging.debug('Got Message...')
+                    last_msg = datetime.now()
                     yield json.loads(msg.value())
         finally:
-            # Close down consumer to commit final offsets.
-            consumer.close()
+            self.close_consumer()
