@@ -78,6 +78,23 @@ services:
       FLASK_APP: webapp.py
       KAFKA_HOSTS: kafka-1:9092,kafka-2:9092
       KAFKA_TOPIC: test
+      DIST_URL: http://agg1:6066/distance/latest
+
+  agg1:
+    depends_on:
+      - kafka-1
+      - kafka-2
+    build:
+      context: ./aggregator
+      dockerfile: Dockerfile
+    ports:
+      - "8002:6066"
+    environment:
+      BROKER_URL: kafka://kafka-1:9092;kafka-2:9092
+      KAFKA_TOPIC: test
+      TABLE_BASE_NAME: dist
+      TABLE_AGG_NAME: agg
+      AGG_NAME: agg-dist
 
   kafka-ui:
     image: obsidiandynamics/kafdrop
@@ -85,7 +102,7 @@ services:
       - kafka-1
       - kafka-2
     ports:
-      - "8002:9000"
+      - "8003:9000"
     environment:
       KAFKA_BROKERCONNECT: kafka-1:9092,kafka-2:9092
       JVM_OPTS: -Xms32M -Xmx64M

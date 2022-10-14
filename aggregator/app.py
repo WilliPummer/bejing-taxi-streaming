@@ -1,67 +1,68 @@
-import json
-import math
-from datetime import datetime, timedelta
-from time import time
-import random
+import logging
+import os
+import sys
 import faust
-import pandas as pd
 import numpy as np
 
+root = logging.getLogger()
+root.setLevel(logging.INFO)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+root.addHandler(handler)
 
 CLEANUP_INTERVAL = 1.0
 WINDOW = 10
 WINDOW_EXPIRES = 1
 PARTITIONS = 1
 
+agg_name = os.environ['AGG_NAME']
+broker_url = os.environ['BROKER_URL']
+topic = os.environ['KAFKA_TOPIC']
+table_name = os.environ['TABLE_BASE_NAME']
 
-class Entry(faust.Record, serializer='json'):
-    id: int
-    key: int
-    date: datetime
-    lat: str
-    lon: str
+logging.info(f'Starting {agg_name}: Connecting to topic {topic} on {broker_url} with table {table_name}')
 
-app = faust.App('taxi-agg', broker="kafka://localhost:39092;localhost:29092", version=1, topic_partitions=2)
-
-app.conf.table_cleanup_interval = CLEANUP_INTERVAL
-source = app.topic("test", value_type=Entry)
-sink = app.topic("agg-event", value_type=str)
+app = faust.App(agg_name, broker=broker_url, version=1, topic_partitions=1)
+source = app.topic(topic, value_type=str)
+dists = (app.Table(table_name, default=list, partitions=PARTITIONS))
 
 
+@app.agent(source)
+async def print_windowed_events(stream):
+    logging.info("Listening to stream")
+    async for event in stream:
+        value_list = dists[event['id']]
+
+        if len(value_list) != 0:
+            last_ele = value_list[-1]
+            new_dis = haversine(last_ele['lat'], last_ele['lon'], event['lat'], event['lon'])
+            value_list.append(dict({'key': last_ele['key'], 'lat': event['lat'], 'lon': event['lon'], 'date': event['date'], 'dis': (last_ele['dis'] + new_dis)}))
+        else:
+            value_list.append(dict({'key': event['id'], 'lat': event['lat'], 'lon': event['lon'], 'date': event['date'], 'dis': 0}))
+
+        dists[event['id']] = value_list
 
 
-
-def window_processor(key, events):
-    start = datetime.fromtimestamp(key[1][0]).strftime('%H:%M:%S')
-    end = datetime.fromtimestamp(key[1][1]).strftime('%H:%M:%S')
-    print(f'Start: {start}, End: {end}')
-
-    dict = {}
-
-    df = pd.DataFrame(events)
-    print(df.dtypes)
-
-    for i, g in df.groupby(['id']):
-        g['distance'] = haversine(g.lat.shift(), g.lon.shift(), g.loc[1:, 'lat'], df.loc[1:, 'lon'])
-        last_dist = g.loc[g.index[-1], "distance"]
-        if not math.isnan(last_dist):
-            dict[i] = last_dist
-
-    print(dict)
-
-    #sink.send_soon(value=AggModel(date=timestamp, count=count, mean=mean))
+@app.page('/{taxi}/distance')
+@app.table_route(table=dists, match_info='taxi')
+async def get_count(web, request, taxi):
+    return web.json({
+        int(taxi): dists[int(taxi)],
+    })
 
 
-tumbling_table = (
-    app.Table(
-        'stats',
-        default=list,
-        partitions=PARTITIONS,
-        on_window_close=window_processor,
-    )
-    .tumbling(timedelta(minutes=1), expires=timedelta(minutes=1)).relative_to_field()
+@app.page('/distance/latest')
+#@app.table_route(table=dists, match_info='taxi')
+async def get_count(web, request):
 
-)
+    result = []
+    for key in dists:
+        result.append(dists[key][-1])
+
+    return web.json(result)
 
 
 #https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas/29546836#29546836
@@ -85,15 +86,6 @@ def haversine(lat1, lon1, lat2, lon2, to_radians=True, earth_radius=6371):
 
     return (earth_radius * 2 * np.arcsin(np.sqrt(a)))*1000
 
-
-
-
-@app.agent(source)
-async def print_windowed_events(stream):
-    async for event in stream:
-        value_list = tumbling_table['events'].value()
-        value_list.append(event)
-        tumbling_table['events'] = value_list
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
