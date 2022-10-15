@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 import uuid
-
 import requests
 
 import kafkaConsumer as kc
@@ -12,6 +11,7 @@ from flask import Flask, Response, redirect, url_for, stream_with_context, rende
 
 app = Flask(__name__)
 
+# set logging to stdout
 root = logging.getLogger()
 root.setLevel(logging.INFO)
 
@@ -21,6 +21,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
+# read environment variables
 dist_url = os.environ['DIST_URL']
 hosts = os.environ['KAFKA_HOSTS']
 topic = os.environ['KAFKA_TOPIC']
@@ -29,14 +30,18 @@ logging.info(f'Connecting to {topic} on hosts {hosts}')
 
 
 @app.route('/')
-def hello_world():
+def index_page():
+    """
+    Renders index page
+    """
     return redirect(url_for('static', filename='index.html'))
 
 
 @app.route('/table')
 def table():
-    response = requests.get(dist_url)
-
+    """
+    Reads the latest statistics and renders them
+    """
     try:
         response = requests.get(dist_url, timeout=5)
         response.raise_for_status()
@@ -64,6 +69,9 @@ def table():
 
 @app.route('/stream')
 def generate_large_csv():
+    """
+    Starts a new KafkaListener and streams the messages to the client as text/event-stream
+    """
     def generate():
         listener = kc.KafkaListener(hosts, uuid.uuid4().hex, [topic])
         try:
