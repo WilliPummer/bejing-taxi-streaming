@@ -34,3 +34,17 @@ for more than one minute.
 * localhost:8002/table -  Total distance by taxi
 
 For each active tab, the live view will open a new consumer that starts with the latest offset.
+
+### Dataset
+The basis for this use case is a subset of the T-Drive trajectory dataset (https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/), 
+consisting of 15 million GPS data points of about 10,000 taxis in Beijing. The subset uses only taxis with a sampling 
+rate of a minimum of five seconds, about 1.7 million data points.
+
+Each one-week taxi data set was split into multiple groups spanning one day to raise the data density.
+
+### Used Resources
+
+* https://stackoverflow.com/a/29546836 (haversine function)
+* https://www.baeldung.com/ops/kafka-docker-setup (kafka setup)
+* https://faust-streaming.github.io/faust/ (faust setup)
+* https://leafletjs.com/ (map frontend)
