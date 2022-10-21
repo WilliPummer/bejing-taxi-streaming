@@ -66,7 +66,7 @@ class KafkaListener:
                 msg = self.consumer.poll(timeout=1.0)
                 logging.debug('Polling...')
                 if msg is None:
-                    if _ping_required():
+                    if self._ping_required():
                         yield "EMPTY_MSG"
                     continue
                 elif msg.error():
@@ -81,7 +81,7 @@ class KafkaListener:
     def _ping_required(self):
         # Checks if ping is needed (5 sec after last message).
         cur_time = datetime.now()
-        if (cur_time - last_msg).total_seconds() > 5:
+        if (cur_time - self.last_msg).total_seconds() > 5:
             self.last_msg = cur_time
             return True
         return False

@@ -130,7 +130,7 @@ def _run(config, topic, df, given_state, given_index, silenced, offset, callback
         if (datetime.datetime.fromtimestamp(time.time()) - new_time).total_seconds() > 0:
             row['date'] = new_time
             if not silenced.value:
-                producer.produce(topic, key=str(index), value=row.to_json(), callback=callback)
+                producer.produce(topic, key=str(row['id']), value=row.to_json(), callback=callback)
             index = index + 1
             with given_index.get_lock():
                 given_index.value = index
@@ -144,15 +144,12 @@ def init_topic(hosts, topic):
     """
     Creates a new topic with given name on the given kafka cluster
 
-    Attributes
-    ----------
-    hosts : str
-        Kafka connection string
-    topic : str
-        target topic for Kafka
+    :param hosts: Kafka connection string
+    :param topic: target topic for Kafka
+    :return: None
     """
     client = AdminClient({'bootstrap.servers': hosts})
-    fs = client.create_topics([NewTopic(topic, num_partitions=1, config={'log.retention.ms': 4000})])
+    fs = client.create_topics([NewTopic(topic, num_partitions=10)])
 
     for topic, f in fs.items():
         try:
@@ -166,12 +163,9 @@ def _msg_callback(err, msg):
     """
     Callback for Kafka producer, to handle message errors
 
-    Attributes
-    ----------
-    err :
-        Kafka error message
-    msg :
-        Kafka message
+    :param err: Kafka error message
+    :param msg: Kafka message
+    :return:
     """
     if err is not None:
         logging.error("Failed to deliver message: %s: %s" % (str(msg), str(err)))
@@ -193,10 +187,9 @@ def _load_data(file):
     Utility method to read a pandas data frame from a given path. File must have a date column with a
     timestamp
 
-    Attributes
-    ----------
-    file : str
-        file path
+
+    :param file: file path
+    :return: pandas dataframe
     """
     df = pd.read_csv(file, delimiter=',', parse_dates=True, header=0, low_memory=False)
     df = df.reset_index()
