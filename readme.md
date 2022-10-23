@@ -42,6 +42,14 @@ rate of a minimum of five seconds, about 1.7 million data points.
 
 Each one-week taxi data set was split into multiple groups spanning one day to raise the data density.
 
+### Usage
+
+After cloning the repository, the whole stack can be started over the command:
+
+    docker compose up
+
+The producer must be started manually (Start button on localhost:8000).
+
 ### Used Resources
 
 * https://stackoverflow.com/a/29546836 (haversine function)
