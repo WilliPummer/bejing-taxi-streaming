@@ -9,4 +9,4 @@ COPY . .
 
 #CMD [ "python3","-u", "webapp.py"]
 
-CMD ["gunicorn", "--workers" ,"4", "--bind", "0.0.0.0:5000", "wsgi:app"]
+CMD ["gunicorn", "--workers" ,"4","--timeout","3600", "--bind", "0.0.0.0:5000", "wsgi:app"]
