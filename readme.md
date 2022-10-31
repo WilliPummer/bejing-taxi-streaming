@@ -14,7 +14,7 @@ resets the timestamp to the current time when starting the stream to simulate 'r
 It is possible to start, stop and silence the data streaming. Data points will be processed but not sent to the topic 
 when silenced. Per default, it creates a topic with ten partitions.
 
-<img src="C:\Users\Willi\PycharmProjects\taxi\pictures\producer.png" title="UI of running producer"/>
+<img src=".\pictures\producer.png" title="UI of running producer"/>
 
 #### Aggregator
 The aggregator is a Faust-streaming application that aggregates the driven distance by taxi by calculating the haversine 
@@ -39,7 +39,7 @@ for more than one minute.
 
 For each active tab, the live view will open a new consumer that starts with the latest offset.
 
-<img src="C:\Users\Willi\PycharmProjects\taxi\pictures\table.png" title="Table view"/>
+<img src=".\pictures\table.png" title="Table view"/>
 
 ### Dataset
 The basis for this use case is a subset of the T-Drive trajectory dataset (https://www.microsoft.com/en-us/research/publication/t-drive-trajectory-data-sample/), 
